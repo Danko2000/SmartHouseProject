@@ -94,7 +94,7 @@ Email — валидированный email-адрес
 Чтобы добавить ссылку в файл Readme.md, нужно использовать синтаксис Markdown. Это делают так:
 
 ```markdown
-[Диаграмма С4-Level1](https://github.com/Danko2000/SmartHouseProject/blob/main/architecture/Monolit.puml)
+[Диаграмма С4-Level1](images/c4_l1.png)
 ```
 
 Замените `Текст ссылки` текстом, который хотите использовать для ссылки. Вместо `URL` вставьте адрес, на который должна вести ссылка. Например:

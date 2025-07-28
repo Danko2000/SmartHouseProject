@@ -1,9 +1,6 @@
 @startuml
 !include <c4/C4_Context>
 
-' Определяем стиль
-'skinparam linetype ortho
-
 ' Система
 System_Boundary(monomoth_app, "Монолитное приложение управления отоплением") {
     System(monomoth, "Монолит на Go\nPostgreSQL\nСинхронная архитектура")
