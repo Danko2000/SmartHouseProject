@@ -1,22 +1,33 @@
 @startuml
-!include <c4/C4_Context>
+'!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include Component.puml
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
 
-' Система
-System_Boundary(monomoth_app, "Монолитное приложение управления отоплением") {
-    System(monomoth, "Монолит на Go\nPostgreSQL\nСинхронная архитектура")
-}
+' === Контейнер ===
+Container(device_control, "Управление устройствами", "Python + FastAPI", "Включить/выключить свет, отопление, ворота, камеры")
 
-' Внешние участники
-Person(user, "Пользователь", "Управляет отоплением, просматривает температуру")
-Person(technician, "Специалист", "Выезд для установки и подключения датчика")
-System(sensor, "Датчик температуры", "Измеряет температуру в доме")
+' === Компоненты ===
+Component(api_commands, "API команд", "REST Endpoints", "POST /command, GET /devices")
+Component(command_service, "Сервис команд", "Business Logic", "Проверяет доступ, формирует команду")
+Component(status_tracker, "Отслеживание статуса", "Status Tracker", "Обновляет статус после команды")
+Component(protocol_sender, "Отправка по протоколу", "Protocol Sender", "MQTT, HTTP, RTSP")
+Component(device_registry, "Реестр устройств", "Device Registry", "Список устройств: ID, тип, статус, протокол")
 
-' Связи
-Rel(user, monomoth, "Управление отоплением и просмотр температуры через веб")
-Rel(technician, monomoth, "Регистрация установки,\nподключение датчика")
-Rel(monomoth, sensor, "Синхронный опрос температуры", "запрашивает")
-Rel(sensor, monomoth, "Ответ с текущей температурой", "отвечает")
+' === Внешние системы ===
+System_Ext(physical_devices, "Физические устройства", "Свет, отопление, ворота, камеры")
+Container(api_gateway, "API Gateway", "Python + FastAPI", "Единая точка входа")
 
-' Подпись
-'Footer Диаграмма контекста (C4 Level 1) | https://c4model.com
+' === Связи ===
+Rel(device_control, api_commands, "Принимает команду\n[POST /command]")
+Rel(api_commands, command_service, "Передаёт на обработку\n[синхронно]")
+Rel(command_service, protocol_sender, "Отправляет команду\n[включить/выключить]")
+Rel(command_service, device_registry, "Проверяет устройство\n[по ID]")
+Rel(protocol_sender, physical_devices, "Выполняет команду\n[MQTT / HTTP / RTSP]")
+Rel(device_registry, api_gateway, "Отдаёт список устройств\n[GET /devices → REST API]")
+Rel(status_tracker, device_registry, "Обновляет статус\n[после выполнения]")
+
+' === Подпись ===
+Footer "C4 Level 3: Управление устройствами"
 @enduml
