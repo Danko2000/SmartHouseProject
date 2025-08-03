@@ -1,0 +1,76 @@
+@startuml
+!include ../c4/C4_Container.puml
+
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+' === Актёр ===
+Person(user, "Пользователь", "Владелец умного дома\nУправляет через веб или мобильное приложение")
+
+' === Система: SaaS «Умный дом» ===
+System_Boundary(smart_home, "SaaS «Умный дом»") {
+
+    ' === Объединённый UI-контейнер ===
+    Container(ui, "UI: Веб и Мобильное", "React + React Native", "Единый интерфейс для управления домом")
+
+    ' === API Gateway ===
+    Container(api_gateway, "API Gateway", "Python + FastAPI", "Маршрутизация, аутентификация, REST API")
+
+    ' === Микросервисы ===
+    Container_Boundary(core, "Core Services") {
+        Container(device_control, "Управление устройствами", "Python", "Вкл/выкл свет, отопление, ворота, камеры")
+        Container(automation, "Автоматизация", "Python", "Сценарии: «Включи свет», «Тревога при движении»")
+    }
+
+    Container_Boundary(supporting, "Supporting Services") {
+        Container(telemetry, "Телеметрия", "Python", "Сбор данных с датчиков и камер")
+        Container(integration, "Интеграция с партнёрами", "Python", "Подключение устройств: MQTT, HTTP, RTSP")
+        Container(notification, "Уведомления", "Python", "SMS, Push")
+    }
+
+    Container_Boundary(generic, "Generic Services") {
+        Container(user_access, "Пользовательский доступ", "Python", "Авторизация, сессии, роли")
+    }
+
+    ' === База данных ===
+    ContainerDb(database, "PostgreSQL", "База данных", "Хранение пользователей, устройств, сценариев")
+
+    ' === Шина событий ===
+    System_Ext(event_bus, "Шина событий", "Kafka", "Обмен событиями: motion_detected, device_online")
+}
+
+' === Внешние системы ===
+System_Ext(partner_devices, "Партнёрские устройства" )
+System_Ext(sms_gateway, "SMS-шлюз")
+
+' === Связи ===
+Rel(user, ui, "Использует", "HTTPS")
+
+Rel(ui, api_gateway, "Вызывает REST API", "HTTPS")
+
+Rel(api_gateway, user_access, "Проверяет JWT", "REST API")
+Rel(api_gateway, device_control, "Вызывает /devices", "REST API")
+Rel(api_gateway, automation, "Вызывает /scenarios", "REST API")
+Rel(api_gateway, telemetry, "Вызывает /sensors", "REST API")
+Rel(api_gateway, integration, "Вызывает /integrations", "REST API")
+Rel(api_gateway, notification, "Вызывает /notifications", "REST API")
+
+Rel(device_control, database, "CRUD устройств", "SQLAlchemy")
+Rel(automation, database, "CRUD сценариев", "SQLAlchemy")
+Rel(telemetry, database, "Запись показаний", "INSERT")
+Rel(integration, database, "Хранение привязок", "SQLAlchemy")
+Rel(notification, database, "Логирование уведомлений", "SQLAlchemy")
+Rel(user_access, database, "Аутентификация", "SQLAlchemy")
+
+Rel(integration, partner_devices, "Подключение и управление", "MQTT / HTTP / RTSP")
+Rel(notification, sms_gateway, "Отправка SMS", "HTTP")
+
+Rel(telemetry, event_bus, "Публикует: motion_detected", "Kafka")
+Rel(automation, event_bus, "Подписывается на события", "Kafka")
+Rel(notification, event_bus, "Реагирует на тревоги", "Kafka")
+
+' === Подпись ===
+Footer "C4 Level 2: Container Diagram"
+@enduml

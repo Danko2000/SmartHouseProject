@@ -1,0 +1,28 @@
+@startuml
+!include ../c4/C4_Context.puml
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+' === Актёр ===
+Person(user, "Пользователь", "Владелец умного дома\nУправляет домом через веб или мобильное приложение")
+
+' === Основная система ===
+System(smart_home, "SaaS «Умный дом»", "Платформа для удалённого управления домом:\nсвет, отопление, ворота, камеры, автоматизация")
+
+' === Внешние системы ===
+System_Ext(partner_devices, "Партнёрские устройства", "Умные лампы, датчики, камеры, замки (TP-Link, Reolink и др.)")
+System_Ext(sms_gateway, "SMS-шлюз", "Сервис для отправки SMS (например, Twilio)")
+System_Ext(event_bus, "Брокер сообщений", "Kafka — асинхронный обмен событиями между компонентами")
+
+' === Связи ===
+Rel(user, smart_home, "Использует для управления домом", "HTTPS\n(через веб и мобильное приложение)")
+
+Rel(smart_home, partner_devices, "Подключает и управляет", "MQTT / HTTP / RTSP")
+Rel(smart_home, sms_gateway, "Отправляет уведомления", "HTTP API")
+Rel(smart_home, event_bus, "Обменивается событиями", "Kafka")
+
+' === Подпись ===
+Footer "C4 Level 1: System Context Diagram"
+@enduml

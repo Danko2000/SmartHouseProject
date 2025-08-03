@@ -1,0 +1,37 @@
+@startuml
+!include ../c4/C4_Component.puml
+
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+Container(automation, "Автоматизация", "Python + FastAPI", "Управление сценариями: «Доброе утро», «Тревога при движении»")
+
+' === Упрощённые компоненты ===
+Component(scenario_controller, "Контроллер сценариев", "REST API", "Обработчики: GET /scenarios, POST /scenarios")
+Component(scenario_service, "Сервис сценариев", "Business Logic", "Создание, запуск, остановка сценариев")
+Component(scenario_repository, "Хранилище сценариев", "SQLAlchemy", "CRUD операции с PostgreSQL")
+Component(trigger_listener, "Слушатель событий", "Kafka Consumer", "Следит за: motion_detected, door_opened")
+Component(schedule_monitor, "Планировщик", "APScheduler", "Запускает по времени (cron)")
+Component(action_executor, "Исполнитель действий", "HTTP Client", "Отправляет команды через API Gateway")
+
+' === Внешние зависимости ===
+Container(api_gateway, "API Gateway", "Python + FastAPI", "Маршрутизация, аутентификация")
+System_Ext(event_bus, "Брокер сообщений", "Kafka", "Поток событий от телеметрии")
+ContainerDb(database, "PostgreSQL", "База данных", "Хранение сценариев и действий")
+
+' === Связи ===
+Rel(automation, scenario_controller, "Приём HTTP-запросов", "REST API")
+Rel(scenario_controller, scenario_service, "Создаёт/запускает сценарий", "синхронно")
+Rel(scenario_service, scenario_repository, "Читает/сохраняет", "SQLAlchemy")
+Rel(trigger_listener, event_bus, "Подписывается на события", "Kafka")
+Rel(trigger_listener, scenario_service, "Запускает при событии", "motion_detected")
+Rel(schedule_monitor, scenario_service, "Запускает по расписанию", "cron")
+Rel(scenario_service, action_executor, "Запускает действия", "выполняет команды")
+Rel(action_executor, api_gateway, "Отправляет команды", "REST API")
+Rel(scenario_repository, database, "INSERT / SELECT", "SQL")
+
+' === Подпись ===
+Footer "C4 Level 3: Автоматизация"
+@enduml
