@@ -1,0 +1,572 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Device Control API",
+    "description": "API для управления умными устройствами",
+    "version": "1.0.0",
+    "contact": {
+      "name": "SmartHome Team",
+      "email": "api@smarthome.company"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://device-control.smarthome.company/v1",
+      "description": "Основной сервер"
+    },
+    {
+      "url": "http://localhost:8000/v1",
+      "description": "Локальный сервер для разработки"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Device": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "device-abc123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Уличный свет"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "light",
+              "heater",
+              "gate",
+              "camera",
+              "sensor"
+            ],
+            "example": "light"
+          },
+          "place": {
+            "type": "string",
+            "example": "двор"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "online",
+              "offline",
+              "error"
+            ],
+            "example": "online"
+          },
+          "protocol": {
+            "type": "string",
+            "enum": [
+              "mqtt",
+              "http",
+              "rtsp"
+            ],
+            "example": "mqtt"
+          },
+          "is_active": {
+            "type": "boolean",
+            "example": true
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-04-05T12:34:56Z"
+          }
+        },
+        "required": [
+          "device_id",
+          "name",
+          "type",
+          "status"
+        ]
+      },
+      "CommandRequest": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "device-abc123"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "turn_on",
+              "turn_off",
+              "set_temperature",
+              "start_recording",
+              "open",
+              "close"
+            ],
+            "example": "turn_on"
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "brightness": 80
+            }
+          }
+        },
+        "required": [
+          "device_id",
+          "action"
+        ]
+      },
+      "CommandResponse": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "cmd-xyz789"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "sent",
+              "failed"
+            ],
+            "example": "accepted"
+          },
+          "device_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string"
+          },
+          "executed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "online",
+              "offline",
+              "error"
+            ],
+            "example": "online"
+          },
+          "last_seen": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2025-04-05T12:34:56Z"
+          },
+          "details": {
+            "type": "object",
+            "nullable": true,
+            "example": {
+              "battery_level": 85,
+              "signal_strength": -65
+            }
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "internal_server_error"
+          },
+          "message": {
+            "type": "string",
+            "example": "Внутренняя ошибка сервера. Попробуйте позже."
+          },
+          "details": {
+            "type": "object",
+            "nullable": true,
+            "example": {
+              "trace_id": "trace-1a2b3c4d"
+            }
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/devices": {
+      "get": {
+        "summary": "Получить список всех устройств",
+        "operationId": "listDevices",
+        "parameters": [
+          {
+            "name": "home_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "place",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список устройств",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Device"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Неавторизован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{device_id}": {
+      "get": {
+        "summary": "Получить информацию об устройстве",
+        "operationId": "getDevice",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Информация об устройстве",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Удалить устройство",
+        "description": "Удаляет устройство из системы.  Также удаляет привязку к интеграции и останавливает сбор телеметрии.\n",
+        "operationId": "deleteDevice",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Устройство успешно удалено. Тело ответа отсутствует."
+          },
+          "403": {
+            "description": "Доступ запрещён (например, устройство в чужом доме)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/command": {
+      "post": {
+        "summary": "Отправить команду устройству",
+        "operationId": "sendCommand",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Команда принята",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверная команда",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{device_id}/status": {
+      "get": {
+        "summary": "Получить текущий статус устройства",
+        "operationId": "getDeviceStatus",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Статус устройства",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Обновить статус устройства (от шлюза или самого устройства)",
+        "operationId": "updateDeviceStatus",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Статус успешно обновлён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверные данные",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Устройство не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
