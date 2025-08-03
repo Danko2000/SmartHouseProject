@@ -1,0 +1,34 @@
+@startuml
+'!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include ../c4/C4_Component.puml
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+Container(integration, "Интеграция", "Python", "Подключение устройств партнёров")
+
+' === Упрощённые компоненты ===
+Component(device_setup, "Настройка устройства", "Setup Wizard", "QR-код, ручной ввод, выбор партнёра")
+Component(auth_manager, "Управление доступом", "OAuth / API Keys", "Хранит и обновляет токены доступа")
+Component(device_manager, "Управление подключёнными устройствами", "Device Manager", "Регистрация, протокол (MQTT/HTTP/RTSP), вызовы")
+
+' === Внешние системы ===
+Container(api_gateway, "API Gateway", "Python + FastAPI", "Приём команд от фронтенда")
+System_Ext(partner_devices, "Партнёрские устройства", "Reolink, Gosund и др.")
+System_Ext(auth_partner, "Облачные аккаунты")
+
+' === Связи ===
+Rel(integration, device_setup, "Начало подключения", "")
+Rel(device_setup, partner_devices, "Сканирует QR-код", "или ручной ввод")
+Rel(device_setup, auth_partner, "Авторизация в аккаунте партнёра", "OAuth2")
+Rel(auth_partner, auth_manager, "Возвращает access_token", "JSON")
+Rel(auth_manager, device_manager, "Передаёт токен", "внутр. API")
+Rel(device_manager, partner_devices, "Управление устройством", "MQTT / HTTP / RTSP")
+
+' === Обратная связь ===
+Rel(device_manager, api_gateway, "Сообщает о статусе", "REST API")
+
+' === Подпись ===
+Footer "C4 Level 3: Интеграция"
+@enduml

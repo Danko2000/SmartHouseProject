@@ -1,0 +1,28 @@
+@startuml
+!include ../c4/C4_Container.puml
+
+' === Настройки стиля ===
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+' === Актёр ===
+Person(user, "Пользователь", "Управляет отоплением,\nпросматривает температуру")
+
+' === Система: Монолитное приложение ===
+System_Boundary(heating_system, "Монолитное приложение управления отоплением") {
+    ' === Монолитная система ===
+    Container(monolith, "system", "Монолит на Go\nPostgreSQL\nСинхронная архитектура")
+}
+
+' === Внешняя система ===
+System_Ext(temperature_sensor, "Датчик температуры", "Измеряет температуру в доме")
+
+' === Связи ===
+Rel(user, monolith, "Управление отоплением и просмотр температуры через веб")
+Rel(monolith, temperature_sensor, "Синхронный запрос температуры [запрашивает]", "HTTP / MQTT")
+Rel(temperature_sensor, monolith, "Ответ с текущей температурой [отвечает]", "HTTP / MQTT")
+
+' === Подпись ===
+Footer "C4 Level 2: Container Diagram"
+@enduml

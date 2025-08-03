@@ -1,0 +1,277 @@
+@startuml
+' Настройки
+skinparam databaseBackgroundColor #FFFDE7
+
+' === Сущности ===
+
+entity "Пользователь" as user {
+  * user_id : UUID <<PK>>
+  --
+  email : VARCHAR(255) <<UK>>
+  hashed_password : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "Дом" as home {
+  * home_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK>>
+  address : TEXT
+  name : VARCHAR(100)
+  description : TEXT
+}
+
+entity "Модуль" as module {
+  * module_id : UUID <<PK>>
+  --
+  home_id : UUID <<FK>>
+  module_type : VARCHAR(50)
+  name : VARCHAR(100)
+  is_enabled : BOOLEAN
+  description : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "ТипУстройства" as device_type {
+  * type_id : INT <<PK>>
+  --
+  type_name : VARCHAR(50)
+  description : TEXT
+  category : VARCHAR(20)
+}
+
+entity "Устройство" as device {
+  * device_id : UUID <<PK>>
+  --
+  home_id : UUID <<FK>>
+  module_id : UUID <<FK>>
+  type_id : INT <<FK>>
+  name : VARCHAR(100)
+  place : VARCHAR(50)
+  status : VARCHAR(20)
+  is_active : BOOLEAN
+  serial_number : VARCHAR(100)
+  firmware_version : VARCHAR(20)
+  installed_at : TIMESTAMP
+}
+
+entity "ПоказаниеДатчика" as reading {
+  * reading_id : UUID <<PK>>
+  --
+  device_id : UUID <<FK>>
+  value : FLOAT
+  unit : VARCHAR(10)
+  measured_at : TIMESTAMP
+}
+
+entity "Команда" as command {
+  * command_id : UUID <<PK>>
+  --
+  device_id : UUID <<FK>>
+  action : VARCHAR(50)
+  parameters : JSONB
+  status : VARCHAR(20)
+  executed_at : TIMESTAMP
+  requested_by : UUID <<FK>>
+}
+
+entity "Сценарий" as scenario {
+  * scenario_id : UUID <<PK>>
+  --
+  home_id : UUID <<FK>>
+  name : VARCHAR(100)
+  description : TEXT
+  is_enabled : BOOLEAN
+  created_at : TIMESTAMP
+}
+
+entity "Действие" as action {
+  * action_id : UUID <<PK>>
+  --
+  scenario_id : UUID <<FK>>
+  device_id : UUID <<FK>>
+  action_type : VARCHAR(50)
+  parameters : JSONB
+  delay_seconds : INT
+  condition : VARCHAR(50)
+  execution_order : INT
+}
+
+' === ОБНОВЛЁННАЯ СУЩНОСТЬ: Интеграция + Подключение ===
+entity "Интеграция" as integration {
+  * binding_id : UUID <<PK>>
+  --
+  device_id : UUID <<FK>>
+  partner_name : VARCHAR(50)
+  access_token : TEXT
+  refresh_token : TEXT
+  expires_at : TIMESTAMP
+}
+
+' === НОВАЯ СУЩНОСТЬ: Подключение устройства ===
+entity "DeviceConnection" as device_connection {
+  * connection_id : UUID <<PK>>
+  --
+  device_id : UUID <<FK>>
+  protocol : VARCHAR(10)
+  ' MQTT, HTTP, RTSP
+  status : VARCHAR(20)
+  ' connected, disconnected, error
+  ip_address : INET
+  port : INT
+  last_heartbeat : TIMESTAMP
+  connected_at : TIMESTAMP
+}
+
+' === НОВАЯ СУЩНОСТЬ: Событие с датчика ===
+entity "SensorEvent" as sensor_event {
+  * event_id : UUID <<PK>>
+  --
+  device_id : UUID <<FK>>
+  event_type : VARCHAR(50)
+  ' motion_detected, door_opened, high_temperature
+  payload : JSONB
+  ' Доп. данные: координаты, изображение, уровень
+  timestamp : TIMESTAMP
+  is_processed : BOOLEAN
+}
+
+' === Уведомления (без изменений) ===
+entity "ТипУведомления" as notification_type {
+  * type_id : INT <<PK>>
+  --
+  type_name : VARCHAR(20) <<UK>>
+  description : TEXT
+}
+
+entity "Уведомление" as notification {
+  * notification_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK>>
+  message : TEXT
+  sent_at : TIMESTAMP
+  status : VARCHAR(20)
+}
+
+entity "ДоставкаУведомления" as delivery {
+  * delivery_id : UUID <<PK>>
+  --
+  notification_id : UUID <<FK>>
+  type_id : INT <<FK>>
+  sent_at : TIMESTAMP
+  status : VARCHAR(20)
+  external_id : VARCHAR(255)
+}
+
+entity "Сессия" as session {
+  * session_id : UUID <<PK>>
+  --
+  user_id : UUID <<FK>>
+  token : TEXT
+  expires_at : TIMESTAMP
+  ip_address : INET
+}
+
+' === Связи ===
+
+user ||--o{ home : "владеет"
+note on link
+  Один пользователь — несколько домов
+end note
+
+home ||--o{ module : "имеет модули"
+note on link
+  Дом может включать несколько модулей:
+  Освещение, Безопасность, Климат и др.
+end note
+
+module ||--o{ device : "управляет устройствами"
+note on link
+  Модуль группирует устройства по функции.
+  Например: модуль 'Освещение' — все лампочки.
+end note
+
+device_type ||--o{ device : "имеет тип"
+note on link
+  Тип: light, temperature_sensor, camera, gate
+  Определяет поведение и протокол
+end note
+
+device ||--o{ reading : "генерирует"
+note on link
+  Устройство (например, датчик) —
+  множество показаний
+end note
+
+device ||--o{ command : "получает команды"
+note on link
+  Устройство — множество команд
+end note
+
+user }o--o{ command : "запрашивает"
+note on link
+  Пользователь инициирует команды
+end note
+
+home }o--o{ scenario : "имеет сценарии"
+note on link
+  Сценарии привязаны к дому
+end note
+
+scenario }o--o{ action : "состоит из"
+note on link
+  Сценарий — несколько действий.
+  Каждое действие — с параметрами, задержкой, условием.
+end note
+
+action }o--|| device : "управляет"
+note on link
+  Действие отправляется на устройство.
+  Поле parameters: JSONB — гибкие параметры (яркость, температура).
+end note
+
+device ||--|| integration : "привязано к"
+note on link
+  Устройство — аккаунт партнёра (1:1)
+end note
+
+integration ||--o{ device_connection : "имеет подключение"
+note on link
+  Состояние подключения: протокол, статус, IP
+end note
+
+device ||--o{ sensor_event : "генерирует события"
+note on link
+  События: движение, открытие двери, тревога
+end note
+
+user }o--o{ notification : "получает"
+note on link
+  Пользователь — инициирует уведомления
+end note
+
+notification_type ||--o{ delivery : "используется в"
+note on link
+  Тип уведомления: sms, email, push
+end note
+
+notification ||--o{ delivery : "имеет доставки"
+note on link
+  Одно уведомление может быть отправлено
+  несколькими способами (например, push + SMS)
+end note
+
+user }o--o{ delivery : "адресат"
+note on link
+  Доставка — конкретному пользователю
+  (через его email, телефон, токен push)
+end note
+
+user }o--o{ session : "имеет сессию"
+note on link
+  Пользователь — несколько сессий
+end note
+
+' === Подпись ===
+footer "ER-диаграмма: SaaS «Умный дом» — с DeviceConnection и SensorEvent"
+@enduml

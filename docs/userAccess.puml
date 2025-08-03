@@ -1,0 +1,36 @@
+@startuml
+!include ../c4/C4_Component.puml
+
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+Container(user_access, "Пользовательский доступ", "Python + FastAPI", "Авторизация, сессии, управление доступом к домам")
+
+' === Компоненты ===
+Component(login_service, "Вход в систему", "Login Form Handler", "Проверяет email и пароль")
+Component(token_manager, "Менеджер токенов", "JWT", "Создаёт и проверяет токены доступа")
+Component(session_tracker, "Трекер сессий", "Session Store", "Хранит активные сессии (Redis / БД)")
+Component(access_checker, "Проверка доступа", "ACL", "Может ли пользователь управлять домом?")
+Component(profile_service, "Профиль пользователя", "User Profile", "Имя, email, список домов")
+
+' === Внешние системы ===
+Container(api_gateway, "API Gateway", "Python + FastAPI", "Маршрутизация запросов")
+ContainerDb(database, "PostgreSQL", "База данных", "Хранение пользователей, сессий, прав доступа")
+
+' === Связи ===
+Rel(user_access, login_service, "Пользователь вводит данные", "email + пароль")
+Rel(login_service, token_manager, "Создаёт JWT", "при успешном входе")
+Rel(token_manager, session_tracker, "Фиксирует сессию", "в БД или Redis")
+Rel(session_tracker, database, "Сохраняет сессию", "INSERT")
+
+Rel(access_checker, api_gateway, "Проверяет токен", "при каждом запросе к /devices, /scenarios")
+Rel(access_checker, profile_service, "Проверяет права", "может ли пользователь управлять домом")
+Rel(profile_service, database, "Читает профиль", "SELECT")
+
+Rel(token_manager, api_gateway, "Возвращает JWT", "в ответе на /auth/login")
+
+' === Подпись ===
+Footer "C4 Level 3: Пользовательский доступ"
+@enduml

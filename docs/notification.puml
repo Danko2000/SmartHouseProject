@@ -1,0 +1,36 @@
+@startuml
+!include ../c4/C4_Component.puml
+
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+Container(notification, "Уведомления", "Python", "SMS и push при событиях")
+
+' === Упрощённые компоненты ===
+Component(event_listener, "Слушатель событий", "Kafka Consumer", "Следит за: motion_detected")
+Component(rule_engine, "Движок правил", "Rules Engine", "Решает: отправлять ли уведомление")
+Component(sms_sender, "Отправка SMS", "SMS Client", "Через SMS-шлюз")
+Component(push_sender, "Push-уведомления", "Push Client" )
+Component(log_writer, "Журнал уведомлений", "Log Writer", "Записывает: что, кому, когда")
+
+' === Внешние системы ===
+System_Ext(sms_gateway, "SMS-шлюз")
+System_Ext(fcm, "Push-сервис")
+ContainerDb(database, "PostgreSQL", "База данных", "История уведомлений")
+
+' === Связи ===
+Rel(notification, event_listener, "Слушает события", "Kafka")
+Rel(event_listener, rule_engine, "Передаёт событие", "motion_detected")
+Rel(rule_engine, sms_sender, "Нужно отправить SMS", "по правилам")
+Rel(rule_engine, push_sender, "Отправить push", "всегда")
+
+Rel(sms_sender, sms_gateway, "Отправляет SMS", "HTTP")
+Rel(push_sender, fcm, "Отправляет push")
+Rel(rule_engine, log_writer, "Фиксирует отправку", "синхронно")
+Rel(log_writer, database, "Логирует", "INSERT")
+
+' === Подпись ===
+Footer "C4 Level 3: Уведомления"
+@enduml

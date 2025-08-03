@@ -1,0 +1,40 @@
+@startuml
+!include ../c4/C4_Component.puml
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+' === Контейнер ===
+Container(telemetry, "Телеметрия", "Python", "Сбор данных с датчиков: температура, движение")
+
+' === Компоненты ===
+Component(data_ingestor, "Приём данных", "Data Ingestor", "Единая точка входа для всех данных: опрос и события")
+Component(sensor_poller, "Опрос датчиков", "Polling Service", "Регулярный и адаптивный опрос (HTTP/MQTT)")
+Component(event_listener, "Слушатель событий", "Kafka Consumer", "Подписка на топики: sensor_update, motion_detected")
+Component(storage_writer, "Запись в базу", "DB Writer", "Нормализация и сохранение в PostgreSQL")
+
+' === Внешние системы ===
+ContainerDb(database, "PostgreSQL", "База данных", "Хранение показаний")
+System_Ext(event_bus, "Брокер сообщений", "Kafka", "Получение событий от устройств через интеграцию")
+System_Ext(devices, "Устройства", "Датчики температуры, движения", "MQTT, HTTP...")
+
+' === Связи ===
+' Контейнер содержит компоненты
+Rel(telemetry, data_ingestor, "Содержит", "primary component")
+
+' Потоки данных
+Rel(data_ingestor, sensor_poller, "Запускает опрос", "по расписанию или по требованию")
+Rel(data_ingestor, event_listener, "Управляет подпиской", "на старте/остановке")
+
+Rel(sensor_poller, devices, "GET /sensor/data", "HTTP / MQTT")
+Rel(event_listener, event_bus, "Подписка: sensor_update", "Kafka consumer")
+
+' Обработка и сохранение
+Rel(sensor_poller, storage_writer, "Передаёт показания", "синхронно")
+Rel(event_listener, storage_writer, "Передаёт событие", "синхронно")
+Rel(storage_writer, database, "INSERT INTO sensor_readings", "SQL")
+
+' === Подпись ===
+Footer "C4 Level 3: Телеметрия"
+@enduml

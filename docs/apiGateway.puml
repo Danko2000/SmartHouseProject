@@ -1,0 +1,40 @@
+@startuml
+!include ../c4/C4_Component.puml
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+' === Контейнер: API Gateway ===
+Container(api_gateway, "API Gateway", "Python + FastAPI", "Маршрутизация и безопасность")
+
+' === Внутренние компоненты ===
+Component(auth_check, "Проверка авторизации", "JWT", "Проверяет токен в заголовке Authorization")
+Component(router, "Маршрутизатор", "APIRouter", "Направляет запросы к микросервисам")
+Component(request_logger, "Логгер запросов", "RequestLogger", "Записывает: путь, статус, время")
+Component(metrics_collector, "Сбор метрик", "Prometheus Exporter", "Собирает: время отклика, RPS")
+Component(error_handler, "Обработчик ошибок", "ErrorHandler", "Возвращает JSON-ошибки")
+
+' === Микросервисы ===
+Container(device_control, "Управление устройствами", "Python", "FastAPI")
+Container(automation, "Автоматизация", "Python", "FastAPI")
+Container(telemetry, "Телеметрия", "Python", "FastAPI")
+Container(user_access, "Пользовательский доступ", "Python", "FastAPI")
+
+' === Связи ===
+Rel(api_gateway, auth_check, "Проверяет доступ", "JWT")
+Rel(auth_check, router, "Пропускает, если авторизован", "токен валиден")
+Rel(router, request_logger, "Логирует запрос", "синхронно")
+Rel(request_logger, metrics_collector, "Отправляет метрики", "Prometheus")
+
+Rel(router, device_control, "Вызывает /devices", "REST API")
+Rel(router, automation, "Вызывает /scenarios", "REST API")
+Rel(router, telemetry, "Вызывает /sensors", "REST API")
+Rel(router, user_access, "Вызывает /auth", "REST API")
+
+Rel(auth_check, error_handler, "Возвращает 403", "если токен неверен")
+Rel(error_handler, api_gateway, "Отправляет ошибку клиенту", "JSON")
+
+' === Подпись ===
+Footer "C4 Level 3: API Gateway"
+@enduml

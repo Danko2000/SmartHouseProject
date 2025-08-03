@@ -1,0 +1,50 @@
+@startuml
+!include ../c4/C4_Component.puml
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam wrapWidth 600
+
+' === Контейнер: UI-интерфейсы ===
+Container(ui, "UI: Веб и Мобильное", "React + React Native", "Единая логика, разные платформы")
+
+' === Общие компоненты (общие для веб и мобильного) ===
+Component(auth_ui, "Форма авторизации", "Login Form", "Email, пароль, вход")
+Component(dashboard, "Главная панель", "Dashboard", "Показывает статус: температура, свет, ворота")
+Component(device_control, "Управление устройствами", "Controls", "Кнопки: вкл/выкл, ползунки")
+Component(scenario_panel, "Сценарии", "Scenarios", "«Доброе утро», «Уход из дома»")
+Component(partner_device_setup, "Подключение устройств партнёров", "Device Setup", "Сканирование QR-кода, ручной ввод, привязка к аккаунту")
+Component(api_client, "Клиент API", "HTTP Client", "Общая логика: fetch / axios к API Gateway")
+
+' === Только для мобильного приложения ===
+Component(mobile_push, "Push-уведомления", "Push Listener", "Получает: «Движение во дворе», «Тревога»")
+System_Ext(fcm, "Push-сервис", "Firebase Cloud Messaging (FCM)", "Доставка push на телефон")
+
+' === Внешние системы ===
+Container(api_gateway, "API Gateway", "Python + FastAPI", "Единая точка входа в систему")
+
+' === Связи ===
+Rel(ui, auth_ui, "Пользователь вводит данные", "")
+Rel(auth_ui, api_client, "Отправляет /auth/login", "REST API")
+
+Rel(ui, dashboard, "Отображает статус", "")
+Rel(dashboard, api_client, "GET /devices, /sensors", "REST API")
+
+Rel(ui, device_control, "Пользователь управляет", "")
+Rel(device_control, api_client, "POST /devices/command", "REST API")
+
+Rel(ui, scenario_panel, "Запускает сценарий", "")
+Rel(scenario_panel, api_client, "POST /scenarios/run", "REST API")
+
+Rel(ui, partner_device_setup, "Добавляет новое устройство", "")
+Rel(partner_device_setup, api_client, "POST /integrations/bind", "REST API")
+
+Rel(ui, mobile_push, "Получает уведомления", "только в мобильной версии")
+Rel(mobile_push, fcm, "Подписывается на push", "FCM")
+Rel(fcm, mobile_push, "Присылает: «Движение обнаружено»", "Push")
+
+Rel(api_client, api_gateway, "Вызывает REST API", "HTTPS")
+
+' === Подпись ===
+Footer "C4 Level 3: UI — Веб и Мобильное"
+@enduml
